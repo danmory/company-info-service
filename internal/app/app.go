@@ -23,4 +23,8 @@ func Run() {
 
 func init() {
 	godotenv.Load()
+	if os.Getenv("APP_ADDRESS") == "" {
+		log.Println("server address did not specified! running on :8080")
+		os.Setenv("APP_ADDRESS", "localhost:8080")
+	}
 }
