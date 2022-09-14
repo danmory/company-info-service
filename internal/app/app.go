@@ -1,13 +1,17 @@
 package app
 
 import (
+	"context"
 	"log"
 	"net"
+	"net/http"
 	"os"
 
 	"github.com/danmory/company-info-service/internal/transport/pb"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func Run() {
@@ -18,7 +22,14 @@ func Run() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterCompanyInfoSearcherServer(grpcServer, pb.NewServer())
 	log.Println("Starting server...")
-	grpcServer.Serve(lis)
+	go grpcServer.Serve(lis)
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	err = pb.RegisterCompanyInfoSearcherHandlerFromEndpoint(context.Background(), mux, os.Getenv("APP_ADDRESS"), opts)
+	if err != nil {
+		panic(err)
+	}
+	http.ListenAndServe(":8081", mux)
 }
 
 func init() {

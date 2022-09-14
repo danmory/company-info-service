@@ -2,8 +2,14 @@ syntax = "proto3";
 
 option go_package = "internal/transport/pb";
 
+import "google/api/annotations.proto";
+
 service CompanyInfoSearcher {
-    rpc Search (SearchRequest) returns (SearchResponse) {}
+    rpc Search (SearchRequest) returns (SearchResponse) {
+        option (google.api.http) = {
+            get: "/inn/{inn}"
+        };
+    }
 }
 
 message SearchRequest {
