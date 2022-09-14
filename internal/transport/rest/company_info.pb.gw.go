@@ -2,17 +2,18 @@
 // source: company_info.proto
 
 /*
-Package pb is a reverse proxy.
+Package rpc is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package pb
+package rpc
 
 import (
 	"context"
 	"io"
 	"net/http"
 
+	extRpc "github.com/danmory/company-info-service/internal/transport/rpc"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
 	"google.golang.org/grpc"
@@ -31,8 +32,8 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
-func request_CompanyInfoSearcher_Search_0(ctx context.Context, marshaler runtime.Marshaler, client CompanyInfoSearcherClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SearchRequest
+func request_CompanyInfoSearcher_Search_0(ctx context.Context, marshaler runtime.Marshaler, client extRpc.CompanyInfoSearcherClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extRpc.SearchRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -57,8 +58,8 @@ func request_CompanyInfoSearcher_Search_0(ctx context.Context, marshaler runtime
 
 }
 
-func local_request_CompanyInfoSearcher_Search_0(ctx context.Context, marshaler runtime.Marshaler, server CompanyInfoSearcherServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SearchRequest
+func local_request_CompanyInfoSearcher_Search_0(ctx context.Context, marshaler runtime.Marshaler, server extRpc.CompanyInfoSearcherServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extRpc.SearchRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -87,7 +88,7 @@ func local_request_CompanyInfoSearcher_Search_0(ctx context.Context, marshaler r
 // UnaryRPC     :call CompanyInfoSearcherServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterCompanyInfoSearcherHandlerFromEndpoint instead.
-func RegisterCompanyInfoSearcherHandlerServer(ctx context.Context, mux *runtime.ServeMux, server CompanyInfoSearcherServer) error {
+func RegisterCompanyInfoSearcherHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extRpc.CompanyInfoSearcherServer) error {
 
 	mux.Handle("GET", pattern_CompanyInfoSearcher_Search_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -145,15 +146,15 @@ func RegisterCompanyInfoSearcherHandlerFromEndpoint(ctx context.Context, mux *ru
 // RegisterCompanyInfoSearcherHandler registers the http handlers for service CompanyInfoSearcher to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
 func RegisterCompanyInfoSearcherHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterCompanyInfoSearcherHandlerClient(ctx, mux, NewCompanyInfoSearcherClient(conn))
+	return RegisterCompanyInfoSearcherHandlerClient(ctx, mux, extRpc.NewCompanyInfoSearcherClient(conn))
 }
 
 // RegisterCompanyInfoSearcherHandlerClient registers the http handlers for service CompanyInfoSearcher
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "CompanyInfoSearcherClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "CompanyInfoSearcherClient"
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extRpc.CompanyInfoSearcherClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extRpc.CompanyInfoSearcherClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "CompanyInfoSearcherClient" to call the correct interceptors.
-func RegisterCompanyInfoSearcherHandlerClient(ctx context.Context, mux *runtime.ServeMux, client CompanyInfoSearcherClient) error {
+// "extRpc.CompanyInfoSearcherClient" to call the correct interceptors.
+func RegisterCompanyInfoSearcherHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extRpc.CompanyInfoSearcherClient) error {
 
 	mux.Handle("GET", pattern_CompanyInfoSearcher_Search_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())

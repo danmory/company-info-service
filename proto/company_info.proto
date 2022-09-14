@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "internal/transport/pb";
+option go_package = "github.com/danmory/company-info-service/internal/transport/rpc";
 
 import "google/api/annotations.proto";
 

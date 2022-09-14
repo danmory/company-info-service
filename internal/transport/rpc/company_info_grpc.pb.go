@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: company_info.proto
 
-package pb
+package rpc
 
 import (
 	context "context"

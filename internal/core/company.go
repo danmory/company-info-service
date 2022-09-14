@@ -1,6 +1,6 @@
 package core
 
-type APIResponse struct {
+type SearchAPIResponse struct {
 	UlCount int `json:"ul_count"`
 	Ul      []struct {
 		Name              string      `json:"name"`
