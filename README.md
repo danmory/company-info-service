@@ -34,6 +34,10 @@ The service consists of 3 servers:
 
    Swagger runs on SWAGGER_PORT (path with docs - <http://localhost:8082/docs>)
 
+## Additional inforamtion
+
+For gRPC and proxy code re-generation please refer to <https://github.com/grpc-ecosystem/grpc-gateway>
+
 ## Contacts
 
 Danila Moriakov - d.moriakov@gmail.com
