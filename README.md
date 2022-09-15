@@ -30,7 +30,7 @@ The service consists of 3 servers:
 
 3. gRPC runs on APP_ADDRESS (<http://localhost:8080>)
 
-   HTTP Proxy runs on PROXY_ADDRESS (path to request - <http://localhost:8081/inn/{enter_inn>}>)
+   HTTP Proxy runs on PROXY_ADDRESS (path to request - <http://localhost:8081/inn/{enter_inn}>)
 
    Swagger runs on SWAGGER_PORT (path with docs - <http://localhost:8082/docs>)
 
