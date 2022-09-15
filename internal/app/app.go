@@ -6,8 +6,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/danmory/company-info-service/internal/docs/restapi"
 	"github.com/danmory/company-info-service/internal/docs/restapi/operations"
@@ -19,37 +21,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
-
-func Run() {
-	appAddress := os.Getenv("APP_ADDRESS")
-	lis, err := net.Listen("tcp", appAddress)
-	if err != nil {
-		panic("failed to listen on: " + appAddress)
-	}
-	defer lis.Close()
-	var wg sync.WaitGroup
-	wg.Add(3) // if at least one service is down - all is down
-	go func() {
-		defer wg.Done()
-		if err := runGRPCServer(lis); err != nil {
-			log.Println("grpc server is down: " + err.Error())
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if err := runHTTPProxyServer(appAddress); err != nil {
-			log.Println("proxy server is down: " + err.Error())
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if err := runSwagger(); err != nil {
-			log.Println("proxy server is down: " + err.Error())
-		}
-	}()
-	log.Println("Servers are up...")
-	wg.Wait()
-}
 
 func init() {
 	godotenv.Load()
@@ -67,40 +38,121 @@ func init() {
 	}
 }
 
-func runGRPCServer(lis net.Listener) error {
-	grpcServer := grpc.NewServer()
-	rpc.RegisterCompanyInfoSearcherServer(grpcServer, rpc.NewServer())
-	return grpcServer.Serve(lis)
+func Run() {
+	appAddress := os.Getenv("APP_ADDRESS")
+	lis, err := net.Listen("tcp", appAddress)
+	if err != nil {
+		panic("failed to listen on: " + appAddress)
+	}
+	defer lis.Close()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		oscall := <-c
+		log.Printf("system call:%+v", oscall)
+		cancel()
+	}()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := runGRPCServer(ctx, lis); err != nil {
+			log.Println("grpc server is down: " + err.Error())
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := runHTTPProxyServer(ctx, appAddress); err != nil {
+			log.Println("proxy server is down: " + err.Error())
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := runSwagger(ctx); err != nil {
+			log.Println("proxy server is down: " + err.Error())
+		}
+	}()
+	wg.Wait()
 }
 
-func runHTTPProxyServer(gRPCAddress string) error {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func runGRPCServer(ctx context.Context, lis net.Listener) (err error) {
+	grpcServer := grpc.NewServer()
+	rpc.RegisterCompanyInfoSearcherServer(grpcServer, rpc.NewServer())
+	go func() {
+		if err = grpcServer.Serve(lis); err != nil && err != http.ErrServerClosed {
+			log.Fatalln("grpc server error: " + err.Error())
+		}
+	}()
+	log.Println("grpc server is running")
+	<-ctx.Done()
+	grpcServer.Stop()
+	if err == http.ErrServerClosed {
+		err = nil
+	}
+	log.Println("grpc server stopped")
+	return
+}
+
+func runHTTPProxyServer(ctx context.Context, gRPCAddress string) (err error) {
 	mux := runtime.NewServeMux()
+	srv := &http.Server{
+		Addr:    os.Getenv("PROXY_ADDRESS"),
+		Handler: mux,
+	}
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	if err := rest.RegisterCompanyInfoSearcherHandlerFromEndpoint(
+	if err = rest.RegisterCompanyInfoSearcherHandlerFromEndpoint(
 		ctx,
 		mux,
 		gRPCAddress,
 		opts); err != nil {
-		return err
+		return
 	}
-	return http.ListenAndServe(os.Getenv("PROXY_ADDRESS"), mux)
+	go func() {
+		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalln("proxy server error: " + err.Error())
+		}
+	}()
+	log.Println("proxy server is running")
+	<-ctx.Done()
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err = srv.Shutdown(ctxShutDown); err != nil {
+		log.Fatalln("proxy server shutdown failed: " + err.Error())
+	}
+	if err == http.ErrServerClosed {
+		err = nil
+	}
+	log.Println("proxy server stopped")
+	return
+
 }
 
-func runSwagger() error {
+func runSwagger(ctx context.Context) (err error) {
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("failed to run swagger: " + err.Error())
 	}
-
 	api := operations.NewCompanyInfoProtoAPI(swaggerSpec)
 	server := restapi.NewServer(api)
-	defer server.Shutdown()
 	server.Port, err = strconv.Atoi(os.Getenv("SWAGGER_PORT"))
 	if err != nil {
-		return err
+		log.Fatalln("failed to get port for swagger: " + err.Error())
 	}
-	return server.Serve()
+	go func() {
+		if err = server.Serve(); err != nil && err != http.ErrServerClosed {
+			log.Fatalln("proxy server error: " + err.Error())
+		}
+	}()
+	log.Println("swagger server is running")
+	<-ctx.Done()
+	if err = server.Shutdown(); err != nil {
+		log.Fatalln("swagger server shutdown failed: " + err.Error())
+	}
+	if err == http.ErrServerClosed {
+		err = nil
+	}
+	return
 }
