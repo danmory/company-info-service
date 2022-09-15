@@ -30,9 +30,16 @@ func (s *companySearchServer) Search(ctx context.Context, r *SearchRequest) (*Se
 	if len(resp.Ul) == 0 {
 		return nil, errors.New("unknown inn")
 	}
+	var parsedINN string
+	if parsedINN, err = service.ParseRecievedINN(resp.Ul[0].Inn); err != nil {
+		return nil, err
+	}
+	if parsedINN != r.GetInn() {
+		return nil, errors.New("cannot find inn")
+	}
 	log.Println("search for " + r.GetInn() + " succeeded")
 	company := resp.Ul[0]
-	return &SearchResponse{Inn: r.GetInn(), Ceo: company.CeoName, Name: company.Name}, nil
+	return &SearchResponse{Inn: parsedINN, Ceo: company.CeoName, Name: company.Name}, nil
 }
 
 func NewServer() *companySearchServer {
